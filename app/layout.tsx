@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Fraunces, Space_Grotesk } from 'next/font/google';
+import { LockGate } from '@/components/lock-gate';
 import { OfflineShell } from '@/components/offline-shell';
 import './globals.css';
 
@@ -52,7 +53,7 @@ export default function RootLayout({
   return (
     <html lang="en-IN" className={`${machine.variable} ${paper.variable}`}>
       <body className="min-h-dvh">
-        {children}
+        <LockGate>{children}</LockGate>
         <OfflineShell />
       </body>
     </html>

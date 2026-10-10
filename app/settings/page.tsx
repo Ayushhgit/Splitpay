@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AppBar } from '@/components/app-bar';
+import { LockSettings } from '@/components/lock-settings';
 import { MDR } from '@/lib/mdr';
 import { formatInrTrim } from '@/lib/money';
 import { type SplitMode } from '@/lib/split';
@@ -160,6 +161,8 @@ export default function SettingsPage() {
           ))}
         </fieldset>
       </section>
+
+      <LockSettings />
 
       <section className="mt-9">
         <h2 className="text-sm font-bold text-cyan">

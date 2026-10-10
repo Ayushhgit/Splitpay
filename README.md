@@ -85,6 +85,35 @@ pretending to accept payments. No screen changes when that lands — but note
 that an aggregator then sees every leg of every sale, and its merchant
 agreement is what governs whether splitting is acceptable.
 
+### The counter lock
+
+A PIN gates the app. On a phone with no PIN yet the first screen asks for one
+and confirms it — there is no default left lying around. It relocks after five
+minutes of no use, and a new browser session is always locked. Wrong guesses
+back off, reaching a five minute wait, so the keypad cannot be walked through
+all ten thousand combinations by hand.
+
+The PIN is never stored. What is stored is a PBKDF2-SHA256 hash over a random
+salt, so a PIN reused from somewhere else does not leak out of this device.
+
+**Be clear about what this is.** It keeps someone who picks up the shop's phone
+out of the till and the ledger. It is not access control: the app is all
+browser and no server, so the check runs on the same device as the person being
+checked, and anyone willing to open developer tools can step past it.
+`NEXT_PUBLIC_ADMIN_PIN`, if set, is compiled into the JavaScript and is a
+convenience, not a secret — see `.env.example`.
+
+If the address itself must refuse strangers, that has to be enforced before any
+code is served:
+
+```bash
+# Vercel Authentication: only your Vercel account can open the deployment
+vercel project protection set vercel-authentication --prod
+```
+
+That is the one that actually holds, because the rejection happens at Vercel's
+edge rather than in code the visitor controls.
+
 ### Where the data lives
 
 On the device, in IndexedDB. Nothing is sent anywhere and nothing syncs to
