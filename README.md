@@ -112,6 +112,22 @@ Or a password checked in Next.js middleware against a server-only env var, which
 needs no Vercel account and holds up because the rejection happens on the server
 rather than in code the visitor controls.
 
+### Clearing the ledger
+
+The bottom of the ledger screen offers four, narrowing from tidy-up to wipe:
+cancelled memos, settled memos from before this month, every memo, and
+everything including settings and the UPI ID. Each one states how many memos
+and how much collected money it will remove and has to be confirmed a second
+time, with the CSV export sitting above it.
+
+Clearing memos deliberately leaves the invoice counter where it is. A number
+handed to a customer is never handed out again, whatever happens to the records
+here — only the full device reset takes the numbering back to the start.
+
+The CSV writes amounts as plain rupee decimals (`7300.00`) with a `currency`
+column beside them, so a spreadsheet reads them as numbers and the columns add
+up. A formatted `Rs 7,300.00` would arrive as text and total to nothing.
+
 ### Where the data lives
 
 On the device, in IndexedDB. Nothing is sent anywhere and nothing syncs to

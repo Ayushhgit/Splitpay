@@ -9,6 +9,7 @@ import {
   inrParts,
   pushDecimal,
   pushDigit,
+  toDecimalRupees,
   toUpiAmount,
 } from '../money';
 
@@ -73,5 +74,21 @@ describe('toUpiAmount', () => {
   it('rejects anything that is not non-negative integer paise', () => {
     expect(() => toUpiAmount(12.5)).toThrow();
     expect(() => toUpiAmount(-100)).toThrow();
+  });
+});
+
+describe('toDecimalRupees', () => {
+  it('is a plain number a spreadsheet can total', () => {
+    expect(toDecimalRupees(730_000)).toBe('7300.00');
+    expect(toDecimalRupees(73_000_000)).toBe('730000.00');
+    expect(toDecimalRupees(4_001)).toBe('40.01');
+    expect(toDecimalRupees(0)).toBe('0.00');
+  });
+
+  it('carries no symbol, grouping or spaces', () => {
+    const out = toDecimalRupees(73_000_000);
+    expect(out).toMatch(/^\d+\.\d{2}$/);
+    expect(out).not.toContain('₹');
+    expect(out).not.toContain(',');
   });
 });

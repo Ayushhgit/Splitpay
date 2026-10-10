@@ -1,6 +1,6 @@
 import { clear, createStore, del, entries, get, set } from 'idb-keyval';
 import { splitSale } from '../split';
-import { formatInr } from '../money';
+import { toDecimalRupees } from '../money';
 import { legNote, legRef, newSaleShortId } from '../upi';
 import {
   type ConfirmLegInput,
@@ -136,23 +136,49 @@ export const localRepo: Repository = {
     );
   },
 
+  async deleteSales(ids) {
+    let removed = 0;
+    for (const id of ids) {
+      if (await get<Sale>(id, SALES)) {
+        await del(id, SALES);
+        removed += 1;
+      }
+    }
+    return removed;
+  },
+
+  async clearSales() {
+    const all = await this.listSales();
+    await clear(SALES);
+    return all.length;
+  },
+
+  async resetEverything() {
+    await clear(SALES);
+    await del(SETTINGS_KEY, CONFIG);
+  },
+
   async exportCsv() {
     const sales = await this.listSales();
+    // Amounts are plain rupee decimals with a currency column beside them, so
+    // a spreadsheet reads them as numbers and the columns add up. "Rs 7,300.00"
+    // would arrive as text and total to nothing.
     const rows: string[][] = [
       [
         'invoice',
         'sale_date',
-        'sale_total',
+        'currency',
+        'sale_total_inr',
         'sale_status',
         'leg',
         'of',
-        'leg_amount',
+        'leg_amount_inr',
         'upi_ref',
         'upi_note',
         'leg_status',
         'leg_paid_at',
         'confirmed_by',
-        'mdr_avoided_on_sale',
+        'mdr_avoided_inr',
       ],
     ];
     for (const s of sales) {
@@ -160,29 +186,27 @@ export const localRepo: Repository = {
         rows.push([
           s.invoiceLabel,
           new Date(s.createdAt).toISOString(),
-          formatInr(s.totalPaise),
+          'INR',
+          toDecimalRupees(s.totalPaise),
           s.status,
           String(l.seq),
           String(s.legs.length),
-          formatInr(l.amountPaise),
+          toDecimalRupees(l.amountPaise),
           l.ref,
           l.note,
           l.status,
           l.paidAt ? new Date(l.paidAt).toISOString() : '',
           l.confirmedBy ?? '',
           // Printed once per sale, on its first leg, so the column sums.
-          l.seq === 1 ? formatInr(s.savingPaise) : '',
+          l.seq === 1 ? toDecimalRupees(s.savingPaise) : '',
         ]);
       }
     }
-    return rows
-      .map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
-      .join('\r\n');
+    // Quote only what needs it: a quoted number is text to some spreadsheets.
+    const cell = (value: string) =>
+      /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+    return rows.map((r) => r.map(cell).join(',')).join('\r\n');
   },
 };
 
-/** Development helper, wired to nothing in the UI. */
-export async function wipeEverything() {
-  await clear(SALES);
-  await del(SETTINGS_KEY, CONFIG);
-}
+

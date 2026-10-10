@@ -32,6 +32,19 @@ export interface Repository {
   /** `month` is "YYYY-MM" in local time. */
   monthTotals(month: string): Promise<MonthTotals>;
   exportCsv(): Promise<string>;
+
+  /**
+   * Remove specific memos. Returns how many were actually removed.
+   *
+   * The invoice counter is deliberately left where it is: numbers that have
+   * been handed to a customer are never handed out again, whatever happens to
+   * the records here.
+   */
+  deleteSales(ids: string[]): Promise<number>;
+  /** Remove every memo, keeping settings and the invoice counter. */
+  clearSales(): Promise<number>;
+  /** Memos, settings, UPI ID, invoice counter — back to a blank device. */
+  resetEverything(): Promise<void>;
 }
 
 export function monthKey(at: number | Date = Date.now()): string {

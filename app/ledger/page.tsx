@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AppBar } from '@/components/app-bar';
+import { ClearLedger } from '@/components/clear-ledger';
 import { ExemptionMeter } from '@/components/exemption-meter';
 import { formatInrTrim } from '@/lib/money';
 import {
@@ -26,12 +27,14 @@ export default function LedgerPage() {
   // Read the clock after mount: the current month is not knowable at prerender.
   const [month, setMonth] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     const now = monthKey();
     setMonth(now);
     repo.listSales(60).then(setSales);
     repo.monthTotals(now).then(setTotals);
   }, []);
+
+  useEffect(load, [load]);
 
   async function downloadCsv() {
     const csv = await repo.exportCsv();
@@ -123,6 +126,8 @@ export default function LedgerPage() {
           Download ledger as CSV
         </button>
       ) : null}
+
+      {sales ? <ClearLedger sales={sales} onCleared={load} /> : null}
     </main>
   );
 }

@@ -80,12 +80,25 @@ export function formatInrTrim(paise: number): string {
     : `${p.sign}${p.rupees}.${p.paise}`;
 }
 
-/** The `am` value for a UPI intent URI. Always two decimals. */
-export function toUpiAmount(paise: number): string {
+/**
+ * Rupees as a plain two-decimal number: no symbol, no grouping, no sign.
+ *
+ * This is the form a machine reads — the UPI `am` parameter and the amount
+ * columns of the CSV export, where "₹7,300.00" would arrive in a
+ * spreadsheet as text that will not add up.
+ */
+export function toDecimalRupees(paise: number): string {
   if (!Number.isInteger(paise) || paise < 0) {
-    throw new Error(`toUpiAmount needs non-negative integer paise, got ${paise}`);
+    throw new Error(
+      `toDecimalRupees needs non-negative integer paise, got ${paise}`
+    );
   }
   return `${Math.floor(paise / 100)}.${String(paise % 100).padStart(2, '0')}`;
+}
+
+/** The `am` value for a UPI intent URI. Always two decimals. */
+export function toUpiAmount(paise: number): string {
+  return toDecimalRupees(paise);
 }
 
 /** Live display of what is being typed, with a caret-friendly trailing dot. */
