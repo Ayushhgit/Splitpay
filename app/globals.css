@@ -1,26 +1,525 @@
 @import "tailwindcss";
 
+/*
+  The app is the machine; the stubs are the paper it issues.
+
+  The machine is a dark navy body with a lit readout and moulded keys. The only
+  bright surfaces are the stubs and the memo, and they are torn along both edges
+  so they read as paper. See DESIGN.md.
+*/
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: dark;
+
+  /* the machine */
+  --machine: #0b1020;
+  --machine-lift: #121a30;
+  --raised: #1a2440;
+  --raised-top: #253153;
+  --recessed: #060a16;
+  --edge: #2b3760;
+  --key-edge: #070b18;
+  --chrome-text: #eef1f9;
+  --chrome-soft: #97a3c0;
+  --chrome-faint: #6c7795;
+
+  /* the paper */
+  --paper: #fcfaf4;
+  --paper-rule: #e2ddcd;
+  --paper-shade: #ece7d9;
+  --ink: #141a2c;
+  --ink-soft: #57607a;
+  --ink-faint: #8a92a6;
+
+  /* the inks */
+  --cyan: #46c2ec;
+  --cyan-deep: #0d6f94;
+  --magenta: #ff5c9b;
+  --magenta-ink: #bb1555;
+  --brass: #edb94f;
+  --brass-lift: #f7d382;
+  --brass-edge: #9d7320;
+  --violet: #6b37c9;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-machine: var(--machine);
+  --color-machine-lift: var(--machine-lift);
+  --color-raised: var(--raised);
+  --color-recessed: var(--recessed);
+  --color-edge: var(--edge);
+  --color-chrome: var(--chrome-text);
+  --color-chrome-soft: var(--chrome-soft);
+  --color-chrome-faint: var(--chrome-faint);
+  --color-paper: var(--paper);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-shade: var(--paper-shade);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-cyan: var(--cyan);
+  --color-cyan-deep: var(--cyan-deep);
+  --color-magenta: var(--magenta);
+  --color-magenta-ink: var(--magenta-ink);
+  --color-brass: var(--brass);
+  --color-violet: var(--violet);
+  --font-sans: var(--font-machine), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background: var(--machine);
+  touch-action: manipulation;
+}
+
+/*
+  The body of the machine: a dark field with a fine diagonal tooling hatch and
+  a faint light from above, so it reads as a moulded object rather than a flat
+  colour.
+*/
+body {
+  min-height: 100dvh;
+  color: var(--chrome-text);
+  font-family: var(--font-machine), ui-sans-serif, system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+  background-color: var(--machine);
+  background-image:
+    radial-gradient(
+      120% 70% at 50% -10%,
+      rgb(70 194 236 / 0.09),
+      transparent 60%
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgb(255 255 255 / 0.014) 0 2px,
+      transparent 2px 6px
+    );
+}
+
+:focus-visible {
+  outline: 3px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@layer components {
+  /* ---- type ----------------------------------------------------------- */
+  /* The machine's readout: tight, technical, tabular. */
+  .readout {
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 0.9;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Anything printed on paper is set in the ledger serif. */
+  .paper,
+  .paper-type {
+    font-family: var(--font-paper), ui-serif, Georgia, serif;
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 24, "WONK" 1;
+  }
+
+  .paper-figure {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    font-variation-settings: "SOFT" 10, "WONK" 1;
+  }
+
+  .label {
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--chrome-soft);
+  }
+
+  /*
+    A hundred-thousand-rupee sale is fifty stubs. Wrapping them would eat the
+    screen, so the row scrolls sideways and every chip stays a full thumb
+    target. The scrollbar is hidden; the overflowing chips are the affordance.
+  */
+  .pip-row {
+    display: flex;
+    gap: 0.375rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    margin-inline: -0.25rem;
+    padding-inline: 0.25rem;
+  }
+
+  .pip-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pip {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    scroll-snap-align: start;
+  }
+
+  .ref {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    color: var(--ink-faint);
+  }
+
+  /* ---- the machine ---------------------------------------------------- */
+  /*
+    The readout panel is sunk into the body, lit from within, and carries the
+    faint horizontal banding of a backlit display.
+  */
+  .display {
+    position: relative;
+    background: linear-gradient(180deg, rgb(70 194 236 / 0.05), transparent 42%),
+      var(--recessed);
+    border: 1px solid var(--edge);
+    border-radius: 16px;
+    box-shadow:
+      inset 0 3px 14px rgb(0 0 0 / 0.65),
+      inset 0 1px 0 rgb(70 194 236 / 0.14),
+      0 1px 0 rgb(255 255 255 / 0.03);
+    overflow: hidden;
+  }
+
+  .display::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      rgb(255 255 255 / 0.022) 0 1px,
+      transparent 1px 4px
+    );
+  }
+
+  .display > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* The lit number. The glow is the display, not decoration on it. */
+  .lit {
+    color: var(--paper);
+    text-shadow:
+      0 0 18px rgb(70 194 236 / 0.3),
+      0 0 54px rgb(70 194 236 / 0.14);
+  }
+
+  /* Keys are moulded slabs: lit along the top edge, with a lip beneath. */
+  .key {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--raised-top), var(--raised));
+    border: 1px solid var(--edge);
+    border-bottom-width: 4px;
+    border-bottom-color: var(--key-edge);
+    border-radius: 12px;
+    color: var(--chrome-text);
+    font-size: 1.7rem;
+    font-weight: 600;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 2px 6px rgb(0 0 0 / 0.3);
+    transition:
+      transform 70ms ease-out,
+      border-bottom-width 70ms ease-out,
+      filter 70ms linear;
+  }
+
+  .key:active {
+    transform: translateY(2px);
+    border-bottom-width: 2px;
+    filter: brightness(1.28);
+  }
+
+  /* The one key that commits: brass, and it looks like metal. */
+  .key-commit {
+    background: linear-gradient(180deg, var(--brass-lift), var(--brass));
+    border-color: var(--brass-lift);
+    border-bottom-color: var(--brass-edge);
+    color: #1b1304;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 0.01em;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.55),
+      0 3px 14px rgb(237 185 79 / 0.22);
+  }
+
+  .key-commit:disabled {
+    background: linear-gradient(180deg, var(--raised-top), var(--raised));
+    border-color: var(--edge);
+    border-bottom-color: var(--key-edge);
+    color: var(--chrome-faint);
+    box-shadow: none;
+  }
+
+  .key-quiet {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.03), transparent);
+    border: 1px solid var(--edge);
+    border-bottom-width: 4px;
+    border-bottom-color: var(--key-edge);
+    color: var(--chrome-text);
+    font-size: 1rem;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  /* ---- the paper ------------------------------------------------------ */
+  /*
+    Torn along both edges, faintly ruled like a bill book page, and lit from
+    the top so it is a sheet rather than a white rectangle.
+  */
+  .paper {
+    --tooth: 11px;
+    position: relative;
+    color: var(--ink);
+    padding-block: calc(var(--tooth) + 0.7rem);
+    background-color: var(--paper);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent 0 27px,
+        rgb(13 111 148 / 0.055) 27px 28px
+      ),
+      radial-gradient(
+        140% 100% at 50% 0%,
+        rgb(255 255 255 / 0.7),
+        transparent 70%
+      );
+    -webkit-mask:
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top /
+        var(--tooth) var(--tooth) repeat-x,
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+        bottom / var(--tooth) var(--tooth) repeat-x,
+      linear-gradient(#000 0 0) center / 100% calc(100% - var(--tooth) * 2)
+        no-repeat;
+    mask:
+      conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top /
+        var(--tooth) var(--tooth) repeat-x,
+      conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg)
+        bottom / var(--tooth) var(--tooth) repeat-x,
+      linear-gradient(#000 0 0) center / 100% calc(100% - var(--tooth) * 2)
+        no-repeat;
+  }
+
+  .rule-ink {
+    border-color: var(--paper-rule);
+  }
+
+  /* A rubber stamp: violet ink, pressed askew, never quite solid. */
+  .stamp {
+    font-family: var(--font-machine), ui-sans-serif, system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--violet);
+    border: 4px double var(--violet);
+    border-radius: 8px;
+    padding: 0.35rem 1.2rem;
+    opacity: 0.9;
+    background: rgb(252 250 244 / 0.7);
+    box-shadow: 0 0 0 1px rgb(107 55 201 / 0.18);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ======================================================================== */
+/* Motion                                                                    */
+/* ======================================================================== */
+
+/* A typed digit drops into the readout rather than blinking into place. */
+@keyframes digit-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.34em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.digit {
+  display: inline-block;
+  animation: digit-in 170ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+/* The next stub feeds up out of the book. */
+@keyframes stub-feed {
+  from {
+    opacity: 0;
+    transform: translateY(22px) rotate(0.6deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+.stub-feed {
+  animation: stub-feed 300ms cubic-bezier(0.2, 0.85, 0.3, 1) backwards;
+}
+
+/* Stamped, then torn off. */
+@keyframes stamp-down {
+  0% {
+    opacity: 0;
+    transform: rotate(-17deg) scale(1.7);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.92);
+  }
+  72% {
+    transform: rotate(-8deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+@keyframes paper-recoil {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(3px);
+  }
+}
+
+@keyframes tear-away {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-55%) rotate(-3deg);
+  }
+}
+
+.is-stamping {
+  animation: paper-recoil 220ms ease-out;
+}
+
+.is-stamping .stamp-mark {
+  animation: stamp-down 210ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+.is-tearing {
+  animation: tear-away 330ms cubic-bezier(0.4, 0, 0.9, 0.3) 210ms forwards;
+}
+
+/*
+  The live code breathes, so it reads as waiting to be scanned. Animating a
+  box-shadow repaints every frame; this rides on transform and opacity instead,
+  which the compositor can handle on its own.
+*/
+@keyframes scan-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0;
+    transform: scale(1.055);
+  }
+}
+
+.scan-ring {
+  position: absolute;
+  inset: -7px;
+  border: 2px solid var(--cyan-deep);
+  border-radius: 7px;
+  opacity: 0.55;
+  pointer-events: none;
+  will-change: transform, opacity;
+  animation: scan-breathe 2.6s ease-in-out infinite;
+}
+
+/* Light travels along the collection rail while a memo is still open. */
+@keyframes rail-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(260%);
+  }
+}
+
+.rail-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / 0.5),
+    transparent
+  );
+  animation: rail-sweep 2.1s ease-in-out infinite;
+}
+
+/* Screens arrive rather than appearing. */
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.screen-in {
+  animation: screen-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1) backwards;
+}
+
+.stagger-1 {
+  animation-delay: 40ms;
+}
+.stagger-2 {
+  animation-delay: 90ms;
+}
+.stagger-3 {
+  animation-delay: 140ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .key,
+  .digit,
+  .stub-feed,
+  .screen-in,
+  .is-stamping,
+  .is-stamping .stamp-mark,
+  .is-tearing,
+  .scan-ring,
+  .rail-sweep::after {
+    transition: none;
+    animation-duration: 1ms;
+    animation-iteration-count: 1;
+  }
 }
