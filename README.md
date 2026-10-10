@@ -87,32 +87,30 @@ agreement is what governs whether splitting is acceptable.
 
 ### The counter lock
 
-A PIN gates the app. On a phone with no PIN yet the first screen asks for one
-and confirms it — there is no default left lying around. It relocks after five
-minutes of no use, and a new browser session is always locked. Wrong guesses
-back off, reaching a five minute wait, so the keypad cannot be walked through
-all ten thousand combinations by hand.
-
-The PIN is never stored. What is stored is a PBKDF2-SHA256 hash over a random
-salt, so a PIN reused from somewhere else does not leak out of this device.
+A PIN gates the app. It is **fixed in the build** — the constant in
+`lib/auth.ts`, or `NEXT_PUBLIC_ADMIN_PIN` if that is set. The lock closes itself
+after five minutes of no use and on every new browser session, and wrong guesses
+back off to a five minute wait, so the keypad cannot be walked through every
+combination by hand.
 
 **Be clear about what this is.** It keeps someone who picks up the shop's phone
-out of the till and the ledger. It is not access control: the app is all
-browser and no server, so the check runs on the same device as the person being
-checked, and anyone willing to open developer tools can step past it.
-`NEXT_PUBLIC_ADMIN_PIN`, if set, is compiled into the JavaScript and is a
-convenience, not a secret — see `.env.example`.
+out of the till and the ledger — the threat that actually happens at a counter.
+It is not access control. The PIN is compiled into the JavaScript the browser
+downloads and is readable by anyone who looks, and the app has no server, so the
+check runs on the same device as the person being checked.
 
 If the address itself must refuse strangers, that has to be enforced before any
-code is served:
+code is served. Two ways, neither of which is in place here:
 
 ```bash
-# Vercel Authentication: only your Vercel account can open the deployment
+# Vercel Authentication — only your Vercel account can open it. Means signing
+# into Vercel in the phone's browser, which is awkward at a till.
 vercel project protection set vercel-authentication --prod
 ```
 
-That is the one that actually holds, because the rejection happens at Vercel's
-edge rather than in code the visitor controls.
+Or a password checked in Next.js middleware against a server-only env var, which
+needs no Vercel account and holds up because the rejection happens on the server
+rather than in code the visitor controls.
 
 ### Where the data lives
 

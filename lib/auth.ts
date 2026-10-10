@@ -5,123 +5,55 @@ import { createStore, get, set } from 'idb-keyval';
 /**
  * The counter lock.
  *
+ * The PIN is fixed in the build. Set NEXT_PUBLIC_ADMIN_PIN to change it without
+ * editing this file; otherwise it is the constant below.
+ *
  * What this is: a PIN that keeps someone who picks up the shop's phone out of
- * the till and the ledger. It locks itself after a few minutes of no use,
- * which is the state a counter phone spends most of its day in.
+ * the till and the ledger. It locks itself after a few minutes of no use, which
+ * is the state a counter phone spends most of its day in.
  *
- * What this is not: access control. The whole app runs in the browser with no
- * server behind it, so the check happens on the same device as the person
- * doing the checking. Anyone willing to open developer tools can step past it,
- * and the build-time admin PIN below ships inside the JavaScript. For access
- * that is actually enforced, the deployment itself has to refuse to serve —
- * see the note in README.
- *
- * The PIN is never stored. What is stored is a PBKDF2-SHA256 hash with a random
- * salt, so a PIN reused from somewhere else does not leak out of this device.
+ * What this is not: access control. The app is all browser and no server, so
+ * the check runs on the same device as the person entering it, and the PIN is
+ * compiled into the JavaScript that device downloads. Anyone willing to read
+ * the bundle or open developer tools can step past it. For access that is
+ * actually enforced, the deployment has to refuse to serve — see README.
  */
+export const COUNTER_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN || '7890';
+
 const CONFIG = createStore('splitqr-config', 'config');
-const PIN_KEY = 'pin';
 const GUARD_KEY = 'pin-guard';
 const SESSION_KEY = 'counter-unlocked-until';
 
 /** How long the app stays open with no interaction. */
 export const IDLE_LOCK_MS = 5 * 60 * 1000;
-export const PIN_LENGTH = 4;
-
-const ITERATIONS = 150_000;
-
-interface PinRecord {
-  salt: string;
-  hash: string;
-  iterations: number;
-}
+export const PIN_LENGTH = COUNTER_PIN.length;
 
 interface Guard {
   failures: number;
   blockedUntil: number;
 }
 
-const toB64 = (buf: ArrayBuffer) =>
-  btoa(String.fromCharCode(...new Uint8Array(buf)));
-
-async function derive(
-  pin: string,
-  salt: Uint8Array,
-  iterations: number
-): Promise<string> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(pin),
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt: salt as BufferSource, iterations, hash: 'SHA-256' },
-    key,
-    256
-  );
-  return toB64(bits);
+async function readGuard(): Promise<Guard> {
+  return (await get<Guard>(GUARD_KEY, CONFIG)) ?? { failures: 0, blockedUntil: 0 };
 }
-
-export async function hasPin(): Promise<boolean> {
-  return Boolean(await get<PinRecord>(PIN_KEY, CONFIG));
-}
-
-export async function setPin(pin: string): Promise<void> {
-  if (!/^\d{4,8}$/.test(pin)) {
-    throw new Error('A PIN is 4 to 8 digits.');
-  }
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const record: PinRecord = {
-    salt: toB64(salt.buffer),
-    hash: await derive(pin, salt, ITERATIONS),
-    iterations: ITERATIONS,
-  };
-  await set(PIN_KEY, record, CONFIG);
-  await set(GUARD_KEY, { failures: 0, blockedUntil: 0 }, CONFIG);
-}
-
-/**
- * A build-time PIN, set with NEXT_PUBLIC_ADMIN_PIN, that works on any device
- * without one of its own. It is a way back in on a phone whose PIN was
- * forgotten — and, being public JavaScript, it is only that.
- */
-const ADMIN_PIN = process.env.NEXT_PUBLIC_ADMIN_PIN ?? '';
 
 export async function howLongBlocked(): Promise<number> {
-  const guard = (await get<Guard>(GUARD_KEY, CONFIG)) ?? {
-    failures: 0,
-    blockedUntil: 0,
-  };
+  const guard = await readGuard();
   return Math.max(0, guard.blockedUntil - Date.now());
 }
 
 export async function verifyPin(pin: string): Promise<boolean> {
   if (await howLongBlocked()) return false;
 
-  const record = await get<PinRecord>(PIN_KEY, CONFIG);
-  let ok = false;
-
-  if (record) {
-    const salt = Uint8Array.from(atob(record.salt), (c) => c.charCodeAt(0));
-    ok = (await derive(pin, salt, record.iterations)) === record.hash;
-  }
-  if (!ok && ADMIN_PIN && pin === ADMIN_PIN) ok = true;
-
-  const guard = (await get<Guard>(GUARD_KEY, CONFIG)) ?? {
-    failures: 0,
-    blockedUntil: 0,
-  };
-
-  if (ok) {
+  if (pin === COUNTER_PIN) {
     await set(GUARD_KEY, { failures: 0, blockedUntil: 0 }, CONFIG);
     unlockForNow();
     return true;
   }
 
   // Back off after a run of wrong guesses, so the keypad cannot be walked
-  // through all ten thousand combinations by hand.
+  // through every combination by hand.
+  const guard = await readGuard();
   const failures = guard.failures + 1;
   const penalty =
     failures < 5 ? 0 : Math.min(5 * 60_000, 15_000 * 2 ** (failures - 5));
@@ -148,8 +80,7 @@ export function touchActivity(): void {
 
 export function isUnlocked(): boolean {
   try {
-    const until = Number(sessionStorage.getItem(SESSION_KEY) ?? 0);
-    return until > Date.now();
+    return Number(sessionStorage.getItem(SESSION_KEY) ?? 0) > Date.now();
   } catch {
     return false;
   }
