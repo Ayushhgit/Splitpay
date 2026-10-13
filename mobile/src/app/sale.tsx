@@ -78,7 +78,11 @@ export default function SaleDeck() {
         easing: Easing.in(Easing.cubic),
         useNativeDriver: true,
       }),
-    ]).start(() => setTearing(null));
+    ]).start(() => {
+      tear.setValue(0);
+      stamp.setValue(0);
+      setTearing(null);
+    });
   }, [sale, focused, tearing, stamp, tear]);
 
   async function undoLeg(leg: Leg) {
@@ -126,7 +130,6 @@ export default function SaleDeck() {
 
   const collected = paidPaise(sale);
   const settled = sale.status === 'paid';
-  const live = focused ?? tearing;
 
   // The code takes the space the stub was given, less its own furniture.
   const codeSize = Math.max(
@@ -187,61 +190,82 @@ export default function SaleDeck() {
         </View>
       ) : (
         <>
+          {/*
+            Two layers, as on the web. The stub that was just paid tears away
+            on top; the next one is already in place underneath, so the tear
+            reveals it rather than replacing it.
+
+            Collapsing these into one layer animated the wrong stub: the ledger
+            is written before the animation runs, so `focused` has already moved
+            on by the time the tear starts.
+          */}
           <View style={s.stage} onLayout={onBox}>
-            {live && box.w > 0 ? (
+            {focused && box.w > 0 ? (
+              <Stub
+                key={focused.id}
+                leg={focused}
+                count={sale.legs.length}
+                invoiceLabel={sale.invoiceLabel}
+                upiUri={uriFor(focused)}
+                size={codeSize}
+                feeding={focused.seq > 1}
+              />
+            ) : null}
+
+            {tearing && box.w > 0 ? (
               <Animated.View
-                style={{
-                  opacity: tear.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 0],
-                  }),
-                  transform: [
-                    {
-                      translateY: tear.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -260],
-                      }),
-                    },
-                    {
-                      rotate: tear.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '-3deg'],
-                      }),
-                    },
-                  ],
-                }}
+                pointerEvents="none"
+                style={[
+                  s.tearLayer,
+                  {
+                    opacity: tear.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 0],
+                    }),
+                    transform: [
+                      {
+                        translateY: tear.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -260],
+                        }),
+                      },
+                      {
+                        rotate: tear.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0deg', '-3deg'],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
               >
                 <Stub
-                  key={live.id}
-                  leg={live}
+                  leg={tearing}
                   count={sale.legs.length}
                   invoiceLabel={sale.invoiceLabel}
-                  upiUri={uriFor(live)}
+                  upiUri={uriFor(tearing)}
                   size={codeSize}
-                  feeding={!tearing && live.seq > 1}
                 />
-                {tearing ? (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={[
-                      s.stampLayer,
-                      {
-                        opacity: stamp,
-                        transform: [
-                          { rotate: '-8deg' },
-                          {
-                            scale: stamp.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [1.7, 1],
-                            }),
-                          },
-                        ],
-                      },
-                    ]}
-                  >
-                    <Text style={s.stampText}>PAID</Text>
-                  </Animated.View>
-                ) : null}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    s.stampLayer,
+                    {
+                      opacity: stamp,
+                      transform: [
+                        { rotate: '-8deg' },
+                        {
+                          scale: stamp.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [1.7, 1],
+                          }),
+                        },
+                      ],
+                    },
+                  ]}
+                >
+                  <Text style={s.stampText}>PAID</Text>
+                </Animated.View>
               </Animated.View>
             ) : null}
           </View>
@@ -277,6 +301,14 @@ const s = StyleSheet.create({
     gap: 10,
   },
   stage: { flex: 1, justifyContent: 'center' },
+  tearLayer: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    justifyContent: 'center',
+  },
   body: {
     color: C.chromeSoft,
     fontFamily: F.machine,
