@@ -43,26 +43,36 @@ export function backspace(d: AmountDraft): AmountDraft {
   return { ...d, rupees: d.rupees.slice(0, -1) };
 }
 
-const inrGroups = new Intl.NumberFormat('en-IN', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+/**
+ * Indian digit grouping: the last three digits, then pairs. 7,30,000 — not
+ * 730,000.
+ *
+ * Done by hand rather than through Intl on purpose. The same money code runs in
+ * a browser and on Hermes, where the locale data behind en-IN is not guaranteed
+ * to be present, and silently falling back to thousands grouping would misstate
+ * every amount over a lakh.
+ */
+export function groupIndian(digits: string): string {
+  if (digits.length <= 3) return digits;
+  const last3 = digits.slice(-3);
+  const rest = digits.slice(0, -3);
+  return `${rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',')},${last3}`;
+}
 
 /**
  * Split for display so the rupee sign and the paise can be sized independently
- * from the rupees. Integer part is grouped the Indian way: 7,30,000 not 730,000.
+ * from the rupees.
  */
 export function inrParts(paise: number): {
   sign: string;
   rupees: string;
   paise: string;
 } {
-  const negative = paise < 0;
-  const [whole, frac] = inrGroups.format(Math.abs(paise) / 100).split('.');
+  const abs = Math.abs(paise);
   return {
-    sign: negative ? '-₹' : '₹',
-    rupees: whole,
-    paise: frac,
+    sign: paise < 0 ? '-₹' : '₹',
+    rupees: groupIndian(String(Math.floor(abs / 100))),
+    paise: String(abs % 100).padStart(2, '0'),
   };
 }
 
@@ -104,9 +114,7 @@ export function toUpiAmount(paise: number): string {
 /** Live display of what is being typed, with a caret-friendly trailing dot. */
 export function draftDisplay(d: AmountDraft): string {
   if (d.rupees === '' && d.paise === null) return '0';
-  const whole = new Intl.NumberFormat('en-IN').format(
-    Number.parseInt(d.rupees || '0', 10)
-  );
+  const whole = groupIndian(String(Number.parseInt(d.rupees || '0', 10)));
   if (d.paise === null) return whole;
   return `${whole}.${d.paise}`;
 }

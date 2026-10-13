@@ -6,6 +6,7 @@ import {
   emptyDraft,
   formatInr,
   formatInrTrim,
+  groupIndian,
   inrParts,
   pushDecimal,
   pushDigit,
@@ -90,5 +91,15 @@ describe('toDecimalRupees', () => {
     expect(out).toMatch(/^\d+\.\d{2}$/);
     expect(out).not.toContain('₹');
     expect(out).not.toContain(',');
+  });
+});
+
+describe('groupIndian', () => {
+  it('groups the Indian way: last three, then pairs', () => {
+    expect(groupIndian('100')).toBe('100');
+    expect(groupIndian('7300')).toBe('7,300');
+    expect(groupIndian('730000')).toBe('7,30,000');
+    expect(groupIndian('12345678')).toBe('1,23,45,678');
+    expect(groupIndian('1')).toBe('1');
   });
 });

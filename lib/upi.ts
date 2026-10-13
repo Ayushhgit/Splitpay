@@ -1,4 +1,5 @@
 import { toUpiAmount } from './money';
+import { randomBytes } from './random';
 
 export interface UpiPayee {
   vpa: string;
@@ -49,9 +50,9 @@ export function legRef(saleShortId: string, seq: number): string {
 /** Six crockford-ish base32 characters. No vowels, so no accidental words. */
 export function newSaleShortId(): string {
   const alphabet = '0123456789BCDFGHJKLMNPQRSTVWXYZ';
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  return Array.from(randomBytes(6), (b) => alphabet[b % alphabet.length]).join(
+    ''
+  );
 }
 
 export interface LegUriInput {
